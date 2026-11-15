@@ -1,0 +1,39 @@
+name: Supabase backup
+
+# Free-tier Supabase has no automatic backups. This dumps the database daily
+# and keeps 14 days of artifacts.
+#
+# Required secret: SUPABASE_DB_URL
+# Use the Supavisor POOLER connection string (session mode, port 5432),
+# because GitHub-hosted runners do not support IPv6:
+#   postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Dump database
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          mkdir -p backups
+          pg_dump "$DB_URL" \
+            --no-owner --no-privileges --no-comments \
+            -Fc -f "backups/supabase-$(date +%F).dump"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-backup-${{ github.run_id }}
+          path: backups/
+          retention-days: 14
