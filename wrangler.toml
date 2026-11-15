@@ -1,0 +1,8 @@
+name = "need-help"
+compatibility_date = "2026-11-15"
+pages_build_output_dir = "dist"
+
+# SPA: serve index.html for client-side routes (avoids _redirects catch-all loop in some deploy modes).
+[assets]
+not_found_handling = "single-page-application"
+html_handling = "auto-trailing-slash"
