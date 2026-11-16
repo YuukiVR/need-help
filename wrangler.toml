@@ -1,6 +1,5 @@
 # Cloudflare Worker serving the Vite SPA as static assets.
-# Deployed at https://need-help.nio-diaz12.workers.dev/
-# Build command: `npm run build` (outputs to dist/)
+# Build command: `npm run build` (outputs to dist/, then inlines assets)
 # Deploy command: `npx wrangler deploy`
 name = "need-help"
 compatibility_date = "2026-11-15"
