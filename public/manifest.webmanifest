@@ -1,0 +1,18 @@
+{
+  "name": "NeedHelp",
+  "short_name": "NeedHelp",
+  "description": "Report water, electricity, and fire emergencies.",
+  "start_url": "/app",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

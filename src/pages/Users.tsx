@@ -2,15 +2,16 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   ChevronLeft,
   ChevronRight,
+  Eye,
   RefreshCw,
   Search,
   ShieldCheck,
   UserCheck,
   UserX,
 } from 'lucide-react'
-import { fetchUsers, updateProfile } from '../lib/api'
+import { fetchUsers, getSignedIdentityUrl, reviewProfileVerification, updateProfile } from '../lib/api'
 import { errorMessage, formatDate, initials } from '../lib/format'
-import type { Profile, Role } from '../lib/types'
+import type { Profile, Role, VerificationStatus } from '../lib/types'
 import { useAuth } from '../auth/AuthProvider'
 import { PageHeader, ErrorBanner } from '../components/PageHeader'
 import { EmptyState } from '../components/EmptyState'
@@ -104,6 +105,39 @@ export function UsersPage() {
     }
   }
 
+  async function setVerification(user: Profile, status: VerificationStatus) {
+    const previous = rows
+    setRows((current) => current.map((item) => (item.id === user.id ? { ...item, verification_status: status } : item)))
+    setSavingId(user.id)
+    setError(null)
+    try {
+      await reviewProfileVerification(user.id, status)
+    } catch (err) {
+      setRows(previous)
+      setError(errorMessage(err))
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  async function viewIdentity(user: Profile) {
+    setSavingId(user.id)
+    setError(null)
+    try {
+      const [selfie, id] = await Promise.all([
+        user.selfie_path ? getSignedIdentityUrl(user.selfie_path) : Promise.resolve(null),
+        user.id_photo_path ? getSignedIdentityUrl(user.id_photo_path) : Promise.resolve(null),
+      ])
+      if (selfie) window.open(selfie, '_blank', 'noopener,noreferrer')
+      if (id) window.open(id, '_blank', 'noopener,noreferrer')
+      if (!selfie && !id) setError('No identity photos uploaded for this user.')
+    } catch (err) {
+      setError(errorMessage(err))
+    } finally {
+      setSavingId(null)
+    }
+  }
+
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const start = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
   const end = Math.min(page * PAGE_SIZE, total)
@@ -171,7 +205,7 @@ export function UsersPage() {
                   <th className="px-4 py-3 font-medium">User</th>
                   <th className="px-4 py-3 font-medium">Phone</th>
                   <th className="px-4 py-3 font-medium">Role</th>
-                  <th className="px-4 py-3 font-medium">Zone</th>
+                  <th className="px-4 py-3 font-medium">Verification</th>
                   <th className="px-4 py-3 font-medium">Status</th>
                   <th className="px-4 py-3 font-medium">Joined</th>
                 </tr>
@@ -224,8 +258,31 @@ export function UsersPage() {
                           <option value="consumer">consumer</option>
                         </select>
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-slate-600">
-                        {user.zone || '—'}
+                      <td className="px-4 py-3">
+                        {user.role === 'consumer' ? (
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={user.verification_status || 'unverified'}
+                              disabled={saving}
+                              onChange={(e) => void setVerification(user, e.target.value as VerificationStatus)}
+                              className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700"
+                              title="Verification status"
+                            >
+                              <option value="unverified">unverified</option>
+                              <option value="pending">pending</option>
+                              <option value="verified">verified</option>
+                              <option value="rejected">rejected</option>
+                            </select>
+                            {(user.selfie_path || user.id_photo_path) ? (
+                              <button type="button" onClick={() => void viewIdentity(user)} disabled={saving}
+                                className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700" title="View selfie/ID (opens signed links)">
+                                <Eye className="h-4 w-4" />
+                              </button>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <button

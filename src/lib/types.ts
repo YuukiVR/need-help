@@ -21,6 +21,8 @@ export type AssignmentStatus =
   | 'completed'
   | 'cancelled'
 
+export type VerificationStatus = 'unverified' | 'pending' | 'verified' | 'rejected'
+
 export interface Profile {
   id: string
   full_name: string
@@ -30,6 +32,14 @@ export interface Profile {
   zone: string | null
   is_active: boolean
   created_at: string
+  address_text?: string | null
+  address_lat?: number | null
+  address_lng?: number | null
+  selfie_path?: string | null
+  id_photo_path?: string | null
+  terms_accepted_at?: string | null
+  terms_version?: string | null
+  verification_status?: VerificationStatus
 }
 
 export interface ReportRow {
@@ -39,6 +49,7 @@ export interface ReportRow {
   status: ReportStatus
   priority: Priority
   is_emergency: boolean
+  is_sos?: boolean
   description: string | null
   photo_path: string | null
   address_text: string | null
@@ -50,6 +61,7 @@ export interface ReportRow {
   reporter_id: string
   reporter_name: string | null
   reporter_phone: string | null
+  reporter_verification_status?: VerificationStatus | null
   assignment_id: string | null
   assignment_status: AssignmentStatus | null
   responder_id: string | null

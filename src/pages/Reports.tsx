@@ -234,7 +234,10 @@ export function ReportsPage() {
                         #{report.ticket_no}
                       </span>
                       {report.is_emergency ? (
-                        <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-red-500 align-middle" />
+                        <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-red-500 align-middle" title="Emergency" />
+                      ) : null}
+                      {report.is_sos ? (
+                        <span className="ml-1 rounded bg-red-100 px-1 py-0.5 text-[10px] font-semibold text-red-700 align-middle">SOS</span>
                       ) : null}
                     </td>
                     <td className="px-4 py-3">

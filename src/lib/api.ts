@@ -11,6 +11,7 @@ import type {
   ReportType,
   ResponderOption,
   Role,
+  VerificationStatus,
 } from './types'
 
 // ─── Profiles ─────────────────────────────────────────────────────────
@@ -73,6 +74,53 @@ export async function updateProfile(
 
   const { error } = await supabase.from('profiles').update(patch).eq('id', id)
   if (error) throw error
+}
+
+export async function updateMyProfile(patch: {
+  full_name?: string
+  phone?: string | null
+  address_text?: string | null
+  address_lat?: number | null
+  address_lng?: number | null
+  selfie_path?: string | null
+  id_photo_path?: string | null
+  terms_accepted_at?: string | null
+  terms_version?: string | null
+  verification_status?: VerificationStatus
+}): Promise<void> {
+  const { data } = await supabase.auth.getUser()
+  if (!data.user) throw new Error('Not signed in')
+  const { error } = await supabase.from('profiles').update(patch).eq('id', data.user.id)
+  if (error) throw error
+}
+
+export async function reviewProfileVerification(
+  profileId: string,
+  status: VerificationStatus,
+): Promise<void> {
+  const { error } = await supabase.rpc('review_profile_verification', {
+    p_profile: profileId,
+    p_status: status,
+  })
+  if (error) throw error
+}
+
+export async function uploadIdentityPhoto(kind: 'selfie' | 'id', file: File): Promise<string> {
+  const { data } = await supabase.auth.getUser()
+  if (!data.user) throw new Error('Not signed in')
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
+  const path = `${data.user.id}/${kind}_${Date.now()}.${ext}`
+  const { error } = await supabase.storage.from('identity-photos').upload(path, file, {
+    upsert: true,
+    contentType: file.type || 'image/jpeg',
+  })
+  if (error) throw error
+  return path
+}
+
+export async function getSignedIdentityUrl(path: string): Promise<string | null> {
+  const { data } = await supabase.storage.from('identity-photos').createSignedUrl(path, 60 * 30)
+  return data?.signedUrl ?? null
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────
@@ -174,6 +222,70 @@ export async function fetchDashboard(): Promise<DashboardData> {
 }
 
 // ─── Reports ──────────────────────────────────────────────────────────
+
+export async function fetchMyReports(): Promise<ReportRow[]> {
+  const { data: user } = await supabase.auth.getUser()
+  if (!user.user) throw new Error('Not signed in')
+  const { data, error } = await supabase
+    .from('report_queue')
+    .select('*')
+    .eq('reporter_id', user.user.id)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []) as ReportRow[]
+}
+
+export async function createReport(input: {
+  type: ReportType
+  description: string
+  address_text: string | null
+  lat: number | null
+  lng: number | null
+  is_sos?: boolean
+  photo?: File | null
+}): Promise<ReportRow> {
+  const { data: user } = await supabase.auth.getUser()
+  if (!user.user) throw new Error('Not signed in')
+
+  const { data, error } = await supabase
+    .from('reports')
+    .insert({
+      type: input.type,
+      description: input.description || null,
+      address_text: input.address_text,
+      lat: input.lat,
+      lng: input.lng,
+      is_sos: !!input.is_sos,
+      reporter_id: user.user.id,
+    })
+    .select('id')
+    .single()
+  if (error) throw error
+  const reportId = (data as { id: string }).id
+
+  if (input.photo) {
+    const ext = (input.photo.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
+    const path = `${reportId}/${Date.now()}.${ext}`
+    const { error: upErr } = await supabase.storage.from('report-photos').upload(path, input.photo, {
+      upsert: false,
+      contentType: input.photo.type || 'image/jpeg',
+    })
+    if (upErr) throw upErr
+    const { error: attachErr } = await supabase.rpc('attach_report_photo', {
+      p_report: reportId,
+      p_path: path,
+    })
+    if (attachErr) throw attachErr
+  }
+
+  const { data: row, error: rowErr } = await supabase
+    .from('report_queue')
+    .select('*')
+    .eq('id', reportId)
+    .single()
+  if (rowErr) throw rowErr
+  return row as ReportRow
+}
 
 export interface ReportFilters {
   status: ReportStatus | 'all'

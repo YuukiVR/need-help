@@ -150,6 +150,11 @@ export function ReportDrawer({
                   <AlertTriangle className="h-3 w-3" /> Emergency
                 </span>
               ) : null}
+              {report?.is_sos ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-red-600 px-2 py-0.5 text-xs font-semibold text-white">
+                  SOS
+                </span>
+              ) : null}
             </div>
             <h2 className="mt-1 truncate text-base font-semibold text-slate-900">
               {report?.address_text || 'Report details'}
@@ -220,6 +225,11 @@ export function ReportDrawer({
                   <div className="flex items-center gap-2 text-slate-600">
                     <User className="h-4 w-4 shrink-0 text-slate-400" />
                     <span>{report.reporter_name || 'Unknown reporter'}</span>
+                    {report.reporter_verification_status ? (
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium capitalize text-slate-600 ring-1 ring-slate-200">
+                        {report.reporter_verification_status}
+                      </span>
+                    ) : null}
                     {report.reporter_phone ? (
                       <a
                         href={`tel:${report.reporter_phone}`}
