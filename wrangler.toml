@@ -1,4 +1,14 @@
-# Cloudflare Pages project config (used by Wrangler / Pages builds).
+# Cloudflare Pages project config.
+# Preferred deploy: let Cloudflare Pages build/deploy from Git (no custom deploy command),
+# or run `npx wrangler pages deploy dist`.
 name = "need-help"
 compatibility_date = "2026-11-15"
 pages_build_output_dir = "dist"
+
+# Fallback so an accidental `wrangler deploy` (Workers command) can still publish
+# the static build as assets instead of failing. Remove the custom deploy command
+# in Cloudflare Pages settings for the proper Pages flow.
+[assets]
+directory = "./dist"
+not_found_handling = "single-page-application"
+html_handling = "auto-trailing-slash"
