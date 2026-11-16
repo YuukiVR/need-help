@@ -1,6 +1,11 @@
-# Cloudflare Pages project config.
-# Preferred: let Cloudflare Pages build/deploy from Git with NO custom deploy command.
-# (Build command: `npm run build`, output directory: `dist`.)
+# Cloudflare Worker serving the Vite SPA as static assets.
+# Deployed at https://need-help.nio-diaz12.workers.dev/
+# Build command: `npm run build` (outputs to dist/)
+# Deploy command: `npx wrangler deploy`
 name = "need-help"
 compatibility_date = "2026-11-15"
-pages_build_output_dir = "dist"
+
+[assets]
+directory = "./dist"
+not_found_handling = "single-page-application"
+html_handling = "auto-trailing-slash"
