@@ -25,7 +25,8 @@ export function ConsumerLayout() {
       <main className="mx-auto max-w-lg px-4 py-4">
         {!profile?.terms_accepted_at && profile?.role === 'consumer' ? (
           <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-            Complete your registration (address, ID and terms) to file verified reports. <NavLink to="/app/register" className="font-semibold underline">Continue</NavLink>
+            Complete your registration (address, selfie, ID and terms) to file verified reports.{' '}
+            <NavLink to="/app/register" className="font-semibold underline">Continue verification</NavLink>
           </div>
         ) : null}
         <Outlet />

@@ -14,22 +14,26 @@ export function RegisterPage() {
   const { session, profile } = useAuth()
   const navigate = useNavigate()
 
-  const [step, setStep] = useState<1 | 2>(1)
-  const [email, setEmail] = useState('')
+  const needsVerification =
+    !!session && !!profile &&
+    (!profile.terms_accepted_at || !profile.selfie_path || !profile.id_photo_path || profile.verification_status === 'rejected' || profile.verification_status === 'unverified')
+
+  const [step, setStep] = useState<1 | 2>(session ? 2 : 1)
+  const [email, setEmail] = useState(profile?.email || '')
   const [password, setPassword] = useState('')
-  const [fullName, setFullName] = useState('')
-  const [phone, setPhone] = useState('')
-  const [addressText, setAddressText] = useState('')
-  const [lat, setLat] = useState<number | null>(null)
-  const [lng, setLng] = useState<number | null>(null)
+  const [fullName, setFullName] = useState(profile?.full_name || '')
+  const [phone, setPhone] = useState(profile?.phone || '')
+  const [addressText, setAddressText] = useState(profile?.address_text || '')
+  const [lat, setLat] = useState<number | null>(profile?.address_lat ?? null)
+  const [lng, setLng] = useState<number | null>(profile?.address_lng ?? null)
   const [selfie, setSelfie] = useState<File | null>(null)
   const [idPhoto, setIdPhoto] = useState<File | null>(null)
-  const [terms, setTerms] = useState(false)
+  const [terms, setTerms] = useState(!!profile?.terms_accepted_at)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   if (session && profile?.role === 'admin') return <Navigate to="/" replace />
-  if (session && profile && profile.terms_accepted_at) return <Navigate to="/app" replace />
+  if (session && profile && profile.terms_accepted_at && !needsVerification) return <Navigate to="/app" replace />
 
   async function handleCreateAccount(e: FormEvent) {
     e.preventDefault()
@@ -74,16 +78,20 @@ export function RegisterPage() {
     e.preventDefault()
     setError(null)
     if (!terms) { setError('You must accept the terms and conditions to continue.'); return }
-    if (!selfie || !idPhoto) { setError('Selfie and ID photo are required for verification.'); return }
     if (!fullName.trim()) { setError('Full name is required.'); return }
+    if (!addressText.trim() || lat == null || lng == null) { setError('Please provide your current address/location on the map.'); return }
+    if ((!selfie && !profile?.selfie_path) || (!idPhoto && !profile?.id_photo_path)) {
+      setError('Selfie and ID photo are required for verification.')
+      return
+    }
     setBusy(true)
     try {
-      const selfiePath = await uploadIdentityPhoto('selfie', selfie)
-      const idPath = await uploadIdentityPhoto('id', idPhoto)
+      const selfiePath = selfie ? await uploadIdentityPhoto('selfie', selfie) : (profile?.selfie_path as string)
+      const idPath = idPhoto ? await uploadIdentityPhoto('id', idPhoto) : (profile?.id_photo_path as string)
       await updateMyProfile({
         full_name: fullName.trim(),
         phone: phone.trim() || null,
-        address_text: addressText.trim() || null,
+        address_text: addressText.trim(),
         address_lat: lat,
         address_lng: lng,
         selfie_path: selfiePath,
@@ -105,8 +113,10 @@ export function RegisterPage() {
     <div className="min-h-screen bg-slate-50 px-4 py-8">
       <div className="mx-auto w-full max-w-lg">
         <div className="mb-5 text-center">
-          <h1 className="text-2xl font-semibold text-slate-900">Create account</h1>
-          <p className="text-sm text-slate-500">Register to report outages and emergencies</p>
+          <h1 className="text-2xl font-semibold text-slate-900">{session ? 'Complete verification' : 'Create account'}</h1>
+          <p className="text-sm text-slate-500">
+            {session ? 'Provide/confirm your address, selfie, ID and terms for verification.' : 'Register to report outages and emergencies'}
+          </p>
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -151,15 +161,20 @@ export function RegisterPage() {
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="text-sm font-medium text-slate-700 inline-flex items-center gap-1"><Camera className="h-4 w-4" /> Selfie</label>
-                  <input type="file" accept="image/*" capture="user" onChange={(e) => setSelfie(e.target.files?.[0] || null)} required
+                  <input type="file" accept="image/*" capture="user" onChange={(e) => setSelfie(e.target.files?.[0] || null)}
                     className="mt-1 block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium" />
+                  {profile?.selfie_path && !selfie ? <p className="mt-1 text-[11px] text-slate-500">Current selfie on file (upload a new one to replace).</p> : null}
                 </div>
                 <div>
                   <label className="text-sm font-medium text-slate-700 inline-flex items-center gap-1"><Camera className="h-4 w-4" /> Photo of ID</label>
-                  <input type="file" accept="image/*" capture="environment" onChange={(e) => setIdPhoto(e.target.files?.[0] || null)} required
+                  <input type="file" accept="image/*" capture="environment" onChange={(e) => setIdPhoto(e.target.files?.[0] || null)}
                     className="mt-1 block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium" />
+                  {profile?.id_photo_path && !idPhoto ? <p className="mt-1 text-[11px] text-slate-500">Current ID photo on file (upload a new one to replace).</p> : null}
                 </div>
               </div>
+              {profile?.verification_status === 'rejected' ? (
+                <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">Your previous verification was not approved. Please review your details/photos and submit again for further verification.</p>
+              ) : null}
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
                 <div className="flex items-start gap-2">
                   <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
